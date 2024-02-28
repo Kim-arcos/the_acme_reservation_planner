@@ -1,4 +1,5 @@
 const pg = require("pg");
+const uuid = require('uuid');
 
 const client = new pg.Client(
   process.env.DATABASE_URL ||
@@ -11,28 +12,88 @@ async function createTables() {
  DROP TABLE IF EXISTS restaurants;
  DROP TABLE IF EXISTS reservations;
 
- CREATE TABLE reservations(
+ CREATE TABLE customers(
     id UUID PRIMARY KEY,
-    department_date DATE NOT NULL
-    customers_id UUID REFERENCES customers(id) NOT NULL );
-    restaurants_id UUID REFERENCES restaurants(id) NOT NULL );
-);
+    name VARCHAR(255) NOT NULL
+ );
 
  CREATE TABLE restaurants(
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL
  );
 
- CREATE TABLE customers(
+ CREATE TABLE reservations(
     id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
- );
+    reserved_date DATE NOT NULL,
+    customers_id UUID REFERENCES customers(id) NOT NULL,
+    restaurants_id UUID REFERENCES restaurants(id) NOT NULL
+);
 `;
 
   await client.query(SQL);
 }
 
+async function createCustomer(name) {
+  const SQL = `
+INSERT INTO customers(id, name)
+VALUES($1, $2)
+RETURNING *;
+`;
+
+  const response = await client.query(SQL, [uuid.v4(), name]);
+  return response.rows[0];
+}
+
+async function createRestaurant(name) {
+  const SQL = `
+    INSERT INTO restaurants(id, name)
+    VALUES($1, $2)
+    RETURNING *;
+    `;
+  const response = await client.query(SQL, [uuid.v4(), name]);
+  return response.rows[0];
+}
+
+async function fetchCustomers() {
+    const SQL = `
+    SELECT * FROM customers;
+    `;
+    const response = await client.query(SQL);
+    return response.rows;
+}
+
+async function fetchRestaurants() {
+    const SQL = `
+    SELECT * FROM restaurants;
+    `;
+    const response = await client.query(SQL);
+    return response.rows;
+}
+
+async function fetchReservations() {
+    const SQL = `
+    SELECT * FROM reservations;
+    `;
+    const response = await client.query(SQL);
+    return response.rows;
+}
+async function createReservations(reserved_date, customer_name, restaurants_name) {
+    const SQL = `
+    INSERT INTO reservations(id, reserved_date, customer_name, restaurants_name)
+    VALUES($1, $2, $3, $4)
+    RETURNING *;
+    `;
+    const response = await client.query(SQL, [uuid.v4(), reserved_date, customer_name, restaurants_name]);
+    return response.rows[0];
+}
+
 module.exports = {
   client,
   createTables,
+  createCustomer,
+  createRestaurant,
+  createReservations,
+  fetchCustomers,
+  fetchRestaurants,
+  fetchReservations
 };
